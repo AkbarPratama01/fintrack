@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MKiosController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\TransferController;
 use App\Http\Controllers\WalletController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -12,74 +14,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/dashboard', function () {
-    $user = Auth::user();
-    $wallets = $user->wallets;
-    
-    // Get categories
-    $incomeCategories = \App\Models\Category::where('type', 'income')
-        ->where(function($query) {
-            $query->whereNull('user_id')
-                  ->orWhere('user_id', Auth::id());
-        })->get();
-    $expenseCategories = \App\Models\Category::where('type', 'expense')
-        ->where(function($query) {
-            $query->whereNull('user_id')
-                  ->orWhere('user_id', Auth::id());
-        })->get();
-    
-    // Calculate statistics
-    $totalBalance = $wallets->sum('balance');
-    
-    // Get current month transactions
-    $currentMonth = now()->startOfMonth();
-    $monthlyIncome = $user->transactions()
-        ->where('type', 'income')
-        ->where('date', '>=', $currentMonth)
-        ->sum('amount');
-    
-    $monthlyExpense = $user->transactions()
-        ->where('type', 'expense')
-        ->where('date', '>=', $currentMonth)
-        ->sum('amount');
-    
-    // Get today's transactions count
-    $todayTransactions = $user->transactions()
-        ->whereDate('date', today())
-        ->count();
-    
-    // Get recent transactions (last 5)
-    $recentTransactions = $user->transactions()
-        ->with(['category', 'wallet'])
-        ->orderBy('date', 'desc')
-        ->orderBy('created_at', 'desc')
-        ->limit(5)
-        ->get();
-    
-    // Get expense breakdown by category (this month)
-    $categoryBreakdown = $user->transactions()
-        ->where('type', 'expense')
-        ->where('date', '>=', $currentMonth)
-        ->selectRaw('category_id, SUM(amount) as total')
-        ->groupBy('category_id')
-        ->with('category')
-        ->get();
-    
-    $totalMonthlyExpense = $categoryBreakdown->sum('total');
-    
-    return view('dashboard', compact(
-        'wallets', 
-        'incomeCategories', 
-        'expenseCategories',
-        'totalBalance',
-        'monthlyIncome',
-        'monthlyExpense',
-        'todayTransactions',
-        'recentTransactions',
-        'categoryBreakdown',
-        'totalMonthlyExpense'
-    ));
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
