@@ -116,6 +116,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/transfers', [TransferController::class, 'index'])->name('transfers.index');
     Route::post('/transfers', [TransferController::class, 'store'])->name('transfers.store');
     Route::delete('/transfers/{walletTransfer}', [TransferController::class, 'destroy'])->name('transfers.destroy');
+    
+    // Scheduled Transfer routes
+    Route::resource('scheduled-transfers', \App\Http\Controllers\ScheduledTransferController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::post('/scheduled-transfers/{scheduledTransfer}/toggle-status', [\App\Http\Controllers\ScheduledTransferController::class, 'toggleStatus'])->name('scheduled-transfers.toggle-status');
+    Route::post('/scheduled-transfers/{scheduledTransfer}/execute', [\App\Http\Controllers\ScheduledTransferController::class, 'execute'])->name('scheduled-transfers.execute');
 });
 
 require __DIR__.'/auth.php';

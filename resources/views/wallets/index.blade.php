@@ -59,8 +59,8 @@
                                 </svg>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">Total Saldo</p>
-                                <p class="text-2xl font-semibold text-green-600">Rp {{ number_format($wallets->sum('balance'), 0, ',', '.') }}</p>
+                                <p class="text-sm font-medium text-gray-600">Total Saldo (IDR)</p>
+                                <p class="text-2xl font-semibold text-green-600">Rp {{ number_format($wallets->where('currency', 'IDR')->sum('balance'), 0, ',', '.') }}</p>
                             </div>
                         </div>
                     </div>
@@ -103,10 +103,10 @@
                             <div class="flex justify-between items-start mb-4">
                                 <div>
                                     <h4 class="text-lg font-semibold text-gray-900">{{ $wallet->name }}</h4>
-                                    <p class="text-sm text-gray-500">{{ $wallet->type ?? 'Cash' }}</p>
+                                    <p class="text-sm text-gray-500">{{ ucfirst($wallet->type ?? 'cash') }} • {{ $wallet->currency ?? 'IDR' }}</p>
                                 </div>
                                 <div class="flex space-x-2">
-                                    <button onclick="editWallet({{ $wallet->id }}, '{{ $wallet->name }}', '{{ $wallet->type }}', '{{ $wallet->balance }}', '{{ $wallet->description }}')" 
+                                    <button onclick="editWallet({{ $wallet->id }}, '{{ $wallet->name }}', '{{ $wallet->type }}', '{{ $wallet->balance }}', '{{ $wallet->description }}', '{{ $wallet->currency }}')" 
                                         class="text-blue-600 hover:text-blue-900">
                                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -126,7 +126,13 @@
 
                             <div class="mb-4">
                                 <p class="text-sm text-gray-600 mb-1">Saldo</p>
-                                <p class="text-2xl font-bold text-green-600">Rp {{ number_format($wallet->balance, 0, ',', '.') }}</p>
+                                <p class="text-2xl font-bold text-green-600">
+                                    @if($wallet->currency === 'IDR')
+                                        Rp {{ number_format($wallet->balance, 0, ',', '.') }}
+                                    @else
+                                        {{ $wallet->currency }} {{ number_format($wallet->balance, 2, '.', ',') }}
+                                    @endif
+                                </p>
                             </div>
 
                             @if($wallet->description)
@@ -196,10 +202,28 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tipe Wallet</label>
                         <select name="type" id="wallet_type" 
                             class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <option value="Cash">Cash</option>
-                            <option value="Bank">Bank</option>
-                            <option value="E-Wallet">E-Wallet</option>
-                            <option value="Other">Lainnya</option>
+                            <option value="cash">Cash</option>
+                            <option value="bank">Bank</option>
+                            <option value="e-wallet">E-Wallet</option>
+                            <option value="credit-card">Kartu Kredit</option>
+                            <option value="savings">Tabungan</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Mata Uang <span class="text-red-500">*</span></label>
+                        <select name="currency" id="wallet_currency" required
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="IDR">IDR - Indonesian Rupiah</option>
+                            <option value="USD">USD - US Dollar</option>
+                            <option value="EUR">EUR - Euro</option>
+                            <option value="GBP">GBP - British Pound</option>
+                            <option value="JPY">JPY - Japanese Yen</option>
+                            <option value="SGD">SGD - Singapore Dollar</option>
+                            <option value="MYR">MYR - Malaysian Ringgit</option>
+                            <option value="CNY">CNY - Chinese Yuan</option>
+                            <option value="AUD">AUD - Australian Dollar</option>
+                            <option value="THB">THB - Thai Baht</option>
                         </select>
                     </div>
 
@@ -321,19 +345,21 @@
             document.getElementById('walletForm').action = '{{ route('wallets.store') }}';
             document.getElementById('formMethod').value = 'POST';
             document.getElementById('wallet_name').value = '';
-            document.getElementById('wallet_type').value = 'Cash';
+            document.getElementById('wallet_type').value = 'cash';
+            document.getElementById('wallet_currency').value = 'IDR';
             document.getElementById('wallet_balance').value = '0';
             document.getElementById('wallet_description').value = '';
             document.getElementById('balanceField').classList.remove('hidden');
         }
 
-        function editWallet(id, name, type, balance, description) {
+        function editWallet(id, name, type, balance, description, currency) {
             document.getElementById('walletModal').classList.remove('hidden');
             document.getElementById('modalTitle').textContent = 'Edit Wallet';
             document.getElementById('walletForm').action = '/wallets/' + id;
             document.getElementById('formMethod').value = 'PUT';
             document.getElementById('wallet_name').value = name;
-            document.getElementById('wallet_type').value = type || 'Cash';
+            document.getElementById('wallet_type').value = type || 'cash';
+            document.getElementById('wallet_currency').value = currency || 'IDR';
             document.getElementById('wallet_description').value = description || '';
             document.getElementById('balanceField').classList.add('hidden');
         }

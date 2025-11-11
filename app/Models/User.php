@@ -86,4 +86,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(WalletTransfer::class);
     }
+
+    /**
+     * Get the scheduled transfers for the user.
+     */
+    public function scheduledTransfers()
+    {
+        return $this->hasMany(ScheduledTransfer::class);
+    }
 }

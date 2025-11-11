@@ -13,21 +13,107 @@ class MKiosController extends Controller
     /**
      * Display the M-KIOS page with transaction history.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
-        $transactions = $user->mkiosTransactions()
-            ->with('wallet')
-            ->orderBy('transaction_date', 'desc')
-            ->paginate(20);
         
-        // Statistics
-        $totalTransactions = $user->mkiosTransactions()->completed()->count();
-        $totalProfit = $user->mkiosTransactions()->completed()->sum('profit');
-        $totalBalanceDeducted = $user->mkiosTransactions()->completed()->sum('balance_deducted');
-        $totalCashReceived = $user->mkiosTransactions()->completed()->sum('cash_received');
+        // Build query with filters
+        $query = $user->mkiosTransactions()->with('wallet');
+        
+        // Filter by transaction type
+        if ($request->filled('transaction_type')) {
+            $query->where('transaction_type', $request->transaction_type);
+        }
+        
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        
+        // Filter by wallet
+        if ($request->filled('wallet_id')) {
+            $query->where('wallet_id', $request->wallet_id);
+        }
+        
+        // Filter by date range
+        if ($request->filled('start_date')) {
+            $query->whereDate('transaction_date', '>=', $request->start_date);
+        }
+        
+        if ($request->filled('end_date')) {
+            $query->whereDate('transaction_date', '<=', $request->end_date);
+        }
+        
+        // Filter by search (phone number, customer ID, or product code)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('phone_number', 'like', "%{$search}%")
+                  ->orWhere('customer_id', 'like', "%{$search}%")
+                  ->orWhere('product_code', 'like', "%{$search}%");
+            });
+        }
+        
+        $transactions = $query->orderBy('transaction_date', 'desc')->paginate(20)->withQueryString();
+        
+        // Statistics (based on filters or all)
+        $statsQuery = $user->mkiosTransactions()->completed();
+        
+        // Apply same filters to stats
+        if ($request->filled('transaction_type')) {
+            $statsQuery->where('transaction_type', $request->transaction_type);
+        }
+        if ($request->filled('wallet_id')) {
+            $statsQuery->where('wallet_id', $request->wallet_id);
+        }
+        if ($request->filled('start_date')) {
+            $statsQuery->whereDate('transaction_date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $statsQuery->whereDate('transaction_date', '<=', $request->end_date);
+        }
+        
+        $totalTransactions = $statsQuery->count();
+        $totalProfit = $statsQuery->sum('profit');
+        $totalBalanceDeducted = $statsQuery->sum('balance_deducted');
+        $totalCashReceived = $statsQuery->sum('cash_received');
         
         $wallets = $user->wallets;
+        
+        // Data for charts
+        // Transaction by Type
+        $transactionsByType = $user->mkiosTransactions()
+            ->selectRaw('transaction_type, COUNT(*) as count, SUM(profit) as total_profit')
+            ->where('status', 'completed')
+            ->groupBy('transaction_type')
+            ->get();
+        
+        // Transaction by Status
+        $transactionsByStatus = $user->mkiosTransactions()
+            ->selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->get();
+        
+        // Daily transactions for last 7 days
+        $dailyTransactions = $user->mkiosTransactions()
+            ->selectRaw('DATE(transaction_date) as date, COUNT(*) as count, SUM(profit) as profit')
+            ->where('transaction_date', '>=', now()->subDays(6))
+            ->where('status', 'completed')
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->get();
+        
+        // Fill missing dates with zero
+        $dates = collect();
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i)->format('Y-m-d');
+            $transaction = $dailyTransactions->firstWhere('date', $date);
+            $dates->push([
+                'date' => $date,
+                'count' => $transaction ? $transaction->count : 0,
+                'profit' => $transaction ? $transaction->profit : 0,
+            ]);
+        }
         
         return view('m-kios.index', compact(
             'user',
@@ -36,7 +122,11 @@ class MKiosController extends Controller
             'totalProfit',
             'totalBalanceDeducted',
             'totalCashReceived',
-            'wallets'
+            'wallets',
+            'transactionsByType',
+            'transactionsByStatus',
+            'dailyTransactions',
+            'dates'
         ));
     }
 
