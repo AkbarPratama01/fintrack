@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class TransactionController extends Controller
@@ -98,12 +99,18 @@ class TransactionController extends Controller
             'amount' => 'required|numeric|min:0.01',
             'date' => 'required|date',
             'description' => 'nullable|string|max:1000',
+            'receipt_image' => 'nullable|image|mimes:jpeg,jpg,png,gif|max:2048',
         ]);
 
         // Check if wallet belongs to user
         $wallet = Wallet::findOrFail($validated['wallet_id']);
         if ($wallet->user_id !== Auth::id()) {
             abort(403, 'Unauthorized action.');
+        }
+
+        // Handle receipt image upload
+        if ($request->hasFile('receipt_image')) {
+            $validated['receipt_image'] = $request->file('receipt_image')->store('receipts', 'public');
         }
 
         DB::transaction(function () use ($validated, $wallet) {
@@ -170,12 +177,22 @@ class TransactionController extends Controller
             'amount' => 'required|numeric|min:0.01',
             'date' => 'required|date',
             'description' => 'nullable|string|max:1000',
+            'receipt_image' => 'nullable|image|mimes:jpeg,jpg,png,gif|max:2048',
         ]);
 
         // Check if wallet belongs to user
         $wallet = Wallet::findOrFail($validated['wallet_id']);
         if ($wallet->user_id !== Auth::id()) {
             abort(403, 'Unauthorized action.');
+        }
+
+        // Handle receipt image upload
+        if ($request->hasFile('receipt_image')) {
+            // Delete old image if exists
+            if ($transaction->receipt_image) {
+                Storage::disk('public')->delete($transaction->receipt_image);
+            }
+            $validated['receipt_image'] = $request->file('receipt_image')->store('receipts', 'public');
         }
 
         DB::transaction(function () use ($validated, $transaction, $wallet) {

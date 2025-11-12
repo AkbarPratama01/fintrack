@@ -56,6 +56,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('scheduled-transfers', \App\Http\Controllers\ScheduledTransferController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::post('/scheduled-transfers/{scheduledTransfer}/toggle-status', [\App\Http\Controllers\ScheduledTransferController::class, 'toggleStatus'])->name('scheduled-transfers.toggle-status');
     Route::post('/scheduled-transfers/{scheduledTransfer}/execute', [\App\Http\Controllers\ScheduledTransferController::class, 'execute'])->name('scheduled-transfers.execute');
+    
+    // Customer routes
+    Route::resource('customers', \App\Http\Controllers\CustomerController::class);
+    
+    // Financial Goals routes
+    Route::resource('financial-goals', \App\Http\Controllers\FinancialGoalController::class);
+    Route::post('/financial-goals/{financialGoal}/contribute', [\App\Http\Controllers\FinancialGoalController::class, 'addContribution'])->name('financial-goals.contribute');
+    Route::post('/financial-goals/{financialGoal}/withdraw', [\App\Http\Controllers\FinancialGoalController::class, 'withdraw'])->name('financial-goals.withdraw');
 });
 
 require __DIR__.'/auth.php';

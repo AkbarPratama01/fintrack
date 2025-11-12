@@ -94,4 +94,28 @@ class User extends Authenticatable
     {
         return $this->hasMany(ScheduledTransfer::class);
     }
+
+    /**
+     * Get the customers for the user.
+     */
+    public function customers()
+    {
+        return $this->hasMany(Customer::class);
+    }
+
+    /**
+     * Get the financial goals for the user.
+     */
+    public function financialGoals()
+    {
+        return $this->hasMany(FinancialGoal::class);
+    }
+
+    /**
+     * Get the goal contributions for the user.
+     */
+    public function goalContributions()
+    {
+        return $this->hasMany(GoalContribution::class);
+    }
 }

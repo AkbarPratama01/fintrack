@@ -140,7 +140,16 @@
                                                 {{ $transaction->wallet->name }}
                                             </td>
                                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                                {{ $transaction->description ? Str::limit($transaction->description, 30) : '-' }}
+                                                <div class="flex items-center gap-2">
+                                                    @if($transaction->receipt_image)
+                                                        <button onclick="showImageModal('{{ $transaction->receipt_image_url }}')" class="flex-shrink-0 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800" title="View receipt">
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                            </svg>
+                                                        </button>
+                                                    @endif
+                                                    <span>{{ $transaction->description ? Str::limit($transaction->description, 30) : '-' }}</span>
+                                                </div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold {{ $transaction->type == 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
                                                 {{ $transaction->type == 'income' ? '+' : '-' }}Rp {{ number_format($transaction->amount, 0, ',', '.') }}
@@ -185,6 +194,18 @@
         </div>
     </div>
 
+    <!-- Image Viewer Modal -->
+    <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center" onclick="closeImageModal()">
+        <div class="relative max-w-4xl mx-auto p-4" onclick="event.stopPropagation()">
+            <button onclick="closeImageModal()" class="absolute -top-2 -right-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full p-2 hover:bg-gray-100 dark:hover:bg-gray-700 z-10">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            <img id="modalImage" src="" alt="Receipt" class="max-w-full max-h-screen rounded-lg shadow-2xl">
+        </div>
+    </div>
+
     <!-- Add/Edit Transaction Modal -->
     <div id="transactionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
         <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white dark:bg-gray-800">
@@ -196,7 +217,7 @@
                     </svg>
                 </button>
             </div>
-            <form id="transactionForm" action="{{ route('transactions.store') }}" method="POST" class="space-y-4">
+            <form id="transactionForm" action="{{ route('transactions.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                 @csrf
                 <input type="hidden" id="formMethod" name="_method" value="">
                 <input type="hidden" name="_modal" value="transaction">
@@ -287,6 +308,31 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description (Optional)</label>
                     <textarea name="description" id="description" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white" rows="3" placeholder="Add notes...">{{ old('description') }}</textarea>
                     @error('description')
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Receipt Image -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Receipt Image (Optional)</label>
+                    <div class="flex items-center space-x-3">
+                        <label class="flex-1 cursor-pointer">
+                            <div class="flex items-center justify-center w-full px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-indigo-500 dark:hover:border-indigo-400 transition duration-150">
+                                <div class="text-center">
+                                    <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <span class="mt-2 text-xs text-gray-500 dark:text-gray-400" id="file-name">Click to upload image</span>
+                                    <p class="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 2MB</p>
+                                </div>
+                            </div>
+                            <input type="file" name="receipt_image" id="receipt_image" class="hidden" accept="image/*" onchange="displayFileName(this)">
+                        </label>
+                    </div>
+                    <div id="image-preview" class="mt-3 hidden">
+                        <img src="" alt="Preview" class="max-w-full h-32 rounded-lg object-cover border-2 border-gray-200 dark:border-gray-600">
+                    </div>
+                    @error('receipt_image')
                         <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                     @enderror
                 </div>
@@ -425,6 +471,49 @@
                     btn.classList.add('bg-indigo-600', 'text-white');
                 }
             });
+        });
+
+        // Preview image before upload
+        function displayFileName(input) {
+            const fileNameSpan = document.getElementById('file-name');
+            const imagePreview = document.getElementById('image-preview');
+            const previewImg = imagePreview.querySelector('img');
+            
+            if (input.files && input.files[0]) {
+                const fileName = input.files[0].name;
+                fileNameSpan.textContent = fileName;
+                
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    imagePreview.classList.remove('hidden');
+                }
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                fileNameSpan.textContent = 'Click to upload image';
+                imagePreview.classList.add('hidden');
+            }
+        }
+
+        // Show receipt image in modal
+        function showImageModal(imageUrl) {
+            document.getElementById('modalImage').src = imageUrl;
+            document.getElementById('imageModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Close image modal
+        function closeImageModal() {
+            document.getElementById('imageModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close image modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeImageModal();
+            }
         });
     </script>
 

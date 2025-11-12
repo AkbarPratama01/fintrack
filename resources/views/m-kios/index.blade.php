@@ -391,12 +391,15 @@
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @if($transaction->transaction_type === 'token_listrik')
-                                        <div class="text-sm font-semibold text-gray-900 dark:text-gray-200">{{ $transaction->customer_id ?? '-' }}</div>
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">ID Pelanggan</div>
-                                        @else
                                         <div class="text-sm font-semibold text-gray-900 dark:text-gray-200">{{ $transaction->phone_number ?? '-' }}</div>
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ $transaction->provider ?? 'Nomor HP' }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ $transaction->provider ?? 'Phone Number' }}</div>
+                                        @if($transaction->customer)
+                                        <div class="mt-1 flex items-center text-xs text-indigo-600 dark:text-indigo-400">
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                            </svg>
+                                            {{ $transaction->customer->name }}
+                                        </div>
                                         @endif
                                         @if($transaction->product_code)
                                         <div class="text-xs text-indigo-600 dark:text-indigo-400 font-medium mt-1">{{ $transaction->product_code }}</div>
@@ -511,15 +514,29 @@
                         @enderror
                     </div>
 
-                    <!-- Field untuk Token Listrik -->
-                    <div id="customer_id_field" class="hidden">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">ID Pelanggan / Nomor Meter <span class="text-red-500">*</span></label>
-                        <input type="text" name="customer_id" id="customer_id" value="{{ old('customer_id') }}"
-                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 @error('customer_id') border-red-500 @enderror"
-                            placeholder="Nomor meter pelanggan">
+                    <!-- Customer Selection (Optional for all types) -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Customer 
+                            <span class="text-gray-500 text-xs">(Optional)</span>
+                            <a href="{{ route('customers.create') }}" target="_blank" class="text-blue-600 hover:text-blue-800 text-xs ml-2">
+                                + Add New
+                            </a>
+                        </label>
+                        <select name="customer_id" id="customer_id" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 @error('customer_id') border-red-500 @enderror">
+                            <option value="">-- Select Customer (Optional) --</option>
+                            @foreach($customers as $customer)
+                                <option value="{{ $customer->id }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
+                                    {{ $customer->name }}
+                                    @if($customer->phone) - {{ $customer->phone }}@endif
+                                    @if($customer->company_name) ({{ $customer->company_name }})@endif
+                                </option>
+                            @endforeach
+                        </select>
                         @error('customer_id')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
+                        <p class="mt-1 text-xs text-gray-500">Link this transaction to a customer for better tracking</p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -663,8 +680,6 @@
                 document.getElementById('phone_number').required = true;
                 document.getElementById('product_code_field').classList.remove('hidden');
             } else if (type === 'token_listrik') {
-                document.getElementById('customer_id_field').classList.remove('hidden');
-                document.getElementById('customer_id').required = true;
                 document.getElementById('product_code_field').classList.remove('hidden');
             }
         }
@@ -672,13 +687,11 @@
         function hideAllFields() {
             // Hide all conditional fields
             document.getElementById('phone_number_field').classList.add('hidden');
-            document.getElementById('customer_id_field').classList.add('hidden');
             document.getElementById('provider_field').classList.add('hidden');
             document.getElementById('product_code_field').classList.add('hidden');
             
             // Remove required attributes
             document.getElementById('phone_number').required = false;
-            document.getElementById('customer_id').required = false;
         }
 
         // Chart.js Configuration

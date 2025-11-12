@@ -18,7 +18,7 @@ class MKiosController extends Controller
         $user = Auth::user();
         
         // Build query with filters
-        $query = $user->mkiosTransactions()->with('wallet');
+        $query = $user->mkiosTransactions()->with(['wallet', 'customer']);
         
         // Filter by transaction type
         if ($request->filled('transaction_type')) {
@@ -79,6 +79,7 @@ class MKiosController extends Controller
         $totalCashReceived = $statsQuery->sum('cash_received');
         
         $wallets = $user->wallets;
+        $customers = $user->customers()->active()->get();
         
         // Data for charts
         // Transaction by Type
@@ -123,6 +124,7 @@ class MKiosController extends Controller
             'totalBalanceDeducted',
             'totalCashReceived',
             'wallets',
+            'customers',
             'transactionsByType',
             'transactionsByStatus',
             'dailyTransactions',
@@ -139,7 +141,7 @@ class MKiosController extends Controller
             'transaction_type' => 'required|in:pulsa,dana,gopay,token_listrik',
             'product_code' => 'nullable|string|max:50',
             'phone_number' => 'nullable|string|max:20',
-            'customer_id' => 'nullable|string|max:100',
+            'customer_id' => 'nullable|exists:customers,id',
             'balance_deducted' => 'required|numeric|min:0',
             'cash_received' => 'required|numeric|min:0',
             'provider' => 'nullable|string|max:50',

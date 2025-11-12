@@ -49,6 +49,14 @@ class MKiosTransaction extends Model
     }
 
     /**
+     * Get the customer for this transaction.
+     */
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    /**
      * Scope for completed transactions.
      */
     public function scopeCompleted($query)

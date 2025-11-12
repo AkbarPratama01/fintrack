@@ -16,6 +16,7 @@ class Transaction extends Model
         'amount',
         'date',
         'description',
+        'receipt_image',
     ];
 
     protected $casts = [
@@ -93,5 +94,13 @@ class Transaction extends Model
     public function isExpense(): bool
     {
         return $this->type === 'expense';
+    }
+
+    /**
+     * Get receipt image URL.
+     */
+    public function getReceiptImageUrlAttribute(): ?string
+    {
+        return $this->receipt_image ? asset('storage/' . $this->receipt_image) : null;
     }
 }
