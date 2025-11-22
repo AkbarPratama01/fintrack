@@ -93,23 +93,23 @@ class TransferController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(WalletTransfer $transfer): RedirectResponse
+    public function destroy(WalletTransfer $walletTransfer): RedirectResponse
     {
         // Check if transfer belongs to authenticated user
-        if ($transfer->user_id !== Auth::id()) {
+        if ($walletTransfer->user_id !== Auth::id()) {
             abort(403);
         }
 
-        DB::transaction(function () use ($transfer) {
-            $fromWallet = $transfer->fromWallet;
-            $toWallet = $transfer->toWallet;
+        DB::transaction(function () use ($walletTransfer) {
+            $fromWallet = $walletTransfer->fromWallet;
+            $toWallet = $walletTransfer->toWallet;
 
             // Revert the transfer
-            $fromWallet->addBalance((float)$transfer->amount);
-            $toWallet->subtractBalance((float)$transfer->amount);
+            $fromWallet->addBalance((float)$walletTransfer->amount);
+            $toWallet->subtractBalance((float)$walletTransfer->amount);
 
             // Delete transfer
-            $transfer->delete();
+            $walletTransfer->delete();
         });
 
         return redirect()->back()->with('success', 'Transfer deleted and balances reverted successfully!');
