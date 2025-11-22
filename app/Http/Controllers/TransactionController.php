@@ -17,12 +17,41 @@ class TransactionController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $transactions = Auth::user()->transactions()
-            ->with(['wallet', 'category'])
-            ->latest('date')
-            ->paginate(15);
+        // Build query with filters
+        $query = Auth::user()->transactions()->with(['wallet', 'category']);
+        
+        // Filter by type
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+        
+        // Filter by category
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+        
+        // Filter by wallet
+        if ($request->filled('wallet_id')) {
+            $query->where('wallet_id', $request->wallet_id);
+        }
+        
+        // Filter by date range
+        if ($request->filled('start_date')) {
+            $query->whereDate('date', '>=', $request->start_date);
+        }
+        
+        if ($request->filled('end_date')) {
+            $query->whereDate('date', '<=', $request->end_date);
+        }
+        
+        // Filter by search (description)
+        if ($request->filled('search')) {
+            $query->where('description', 'like', '%' . $request->search . '%');
+        }
+        
+        $transactions = $query->latest('date')->paginate(15)->withQueryString();
         
         $wallets = Auth::user()->wallets;
         
@@ -40,15 +69,31 @@ class TransactionController extends Controller
             ->where('type', 'expense')
             ->get();
         
-        // Statistics
-        $totalIncome = Auth::user()->transactions()
-            ->where('type', 'income')
-            ->sum('amount');
-            
-        $totalExpense = Auth::user()->transactions()
-            ->where('type', 'expense')
-            ->sum('amount');
-            
+        $allCategories = $incomeCategories->merge($expenseCategories);
+        
+        // Statistics (based on filters or all)
+        $statsQuery = Auth::user()->transactions();
+        
+        // Apply same filters to stats
+        if ($request->filled('type')) {
+            $statsQuery->where('type', $request->type);
+        }
+        if ($request->filled('category_id')) {
+            $statsQuery->where('category_id', $request->category_id);
+        }
+        if ($request->filled('wallet_id')) {
+            $statsQuery->where('wallet_id', $request->wallet_id);
+        }
+        if ($request->filled('start_date')) {
+            $statsQuery->whereDate('date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $statsQuery->whereDate('date', '<=', $request->end_date);
+        }
+        
+        $totalIncome = (clone $statsQuery)->where('type', 'income')->sum('amount');
+        $totalExpense = (clone $statsQuery)->where('type', 'expense')->sum('amount');
+        
         $monthlyIncome = Auth::user()->transactions()
             ->where('type', 'income')
             ->whereMonth('date', now()->month)
@@ -66,6 +111,7 @@ class TransactionController extends Controller
             'wallets',
             'incomeCategories',
             'expenseCategories',
+            'allCategories',
             'totalIncome',
             'totalExpense',
             'monthlyIncome',

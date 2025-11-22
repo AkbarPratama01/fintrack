@@ -99,16 +99,132 @@
             <!-- Transactions Table -->
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-lg rounded-lg">
                 <div class="p-6">
-                    <div class="flex items-center justify-between mb-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">All Transactions</h3>
-                        <div class="flex space-x-2">
-                            <button onclick="filterTransactions('all')" class="filter-btn active px-3 py-1 rounded-lg text-sm font-medium transition duration-150">All</button>
-                            <button onclick="filterTransactions('income')" class="filter-btn px-3 py-1 rounded-lg text-sm font-medium transition duration-150">Income</button>
-                            <button onclick="filterTransactions('expense')" class="filter-btn px-3 py-1 rounded-lg text-sm font-medium transition duration-150">Expense</button>
-                        </div>
+                        <button onclick="toggleFilterPanel()" class="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200">
+                            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                            </svg>
+                            Filter
+                        </button>
                     </div>
 
+                    <!-- Filter Panel -->
+                    <div id="filterPanel" class="hidden mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <form method="GET" action="{{ route('transactions.index') }}" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <!-- Type Filter -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
+                                    <select name="type" class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                        <option value="">All Types</option>
+                                        <option value="income" {{ request('type') == 'income' ? 'selected' : '' }}>Income</option>
+                                        <option value="expense" {{ request('type') == 'expense' ? 'selected' : '' }}>Expense</option>
+                                    </select>
+                                </div>
+
+                                <!-- Category Filter -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                                    <select name="category_id" class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                        <option value="">All Categories</option>
+                                        @foreach($allCategories as $category)
+                                            <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
+                                                {{ $category->icon }} {{ $category->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <!-- Wallet Filter -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Wallet</label>
+                                    <select name="wallet_id" class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                        <option value="">All Wallets</option>
+                                        @foreach($wallets as $wallet)
+                                            <option value="{{ $wallet->id }}" {{ request('wallet_id') == $wallet->id ? 'selected' : '' }}>
+                                                {{ $wallet->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <!-- Start Date -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
+                                    <input type="date" name="start_date" value="{{ request('start_date') }}" class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                </div>
+
+                                <!-- End Date -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+                                    <input type="date" name="end_date" value="{{ request('end_date') }}" class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                </div>
+
+                                <!-- Search -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search Description</label>
+                                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Search..." class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end space-x-2">
+                                <a href="{{ route('transactions.index') }}" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition duration-150">
+                                    Reset
+                                </a>
+                                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-150">
+                                    Apply Filters
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Active Filters Info -->
+                    @if(request()->hasAny(['type', 'category_id', 'wallet_id', 'start_date', 'end_date', 'search']))
+                    <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm text-blue-800 dark:text-blue-200">
+                                <strong>Filters Active:</strong>
+                                @if(request('type'))
+                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200">
+                                        Type: {{ ucfirst(request('type')) }}
+                                    </span>
+                                @endif
+                                @if(request('category_id'))
+                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200">
+                                        Category
+                                    </span>
+                                @endif
+                                @if(request('wallet_id'))
+                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200">
+                                        Wallet
+                                    </span>
+                                @endif
+                                @if(request('start_date') || request('end_date'))
+                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200">
+                                        Date Range
+                                    </span>
+                                @endif
+                                @if(request('search'))
+                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200">
+                                        Search: "{{ request('search') }}"
+                                    </span>
+                                @endif
+                            </p>
+                            <a href="{{ route('transactions.index') }}" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline">
+                                Clear All
+                            </a>
+                        </div>
+                    </div>
+                    @endif
+
+                    <!-- Results Count -->
                     @if($transactions->count() > 0)
+                    <div class="mb-4 text-sm text-gray-600 dark:text-gray-400">
+                        Showing <span class="font-semibold">{{ $transactions->firstItem() }}</span> - <span class="font-semibold">{{ $transactions->lastItem() }}</span> of <span class="font-semibold">{{ $transactions->total() }}</span> transactions
+                    </div>
+
+                    <div>
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead class="bg-gray-50 dark:bg-gray-700">
@@ -411,26 +527,17 @@
             }
         }
 
-        function filterTransactions(type) {
-            const rows = document.querySelectorAll('.transaction-row');
-            const buttons = document.querySelectorAll('.filter-btn');
-            
-            buttons.forEach(btn => {
-                btn.classList.remove('active', 'bg-indigo-600', 'text-white');
-                btn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
-            });
-            
-            event.target.classList.add('active', 'bg-indigo-600', 'text-white');
-            event.target.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
-            
-            rows.forEach(row => {
-                if (type === 'all' || row.dataset.type === type) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+        function toggleFilterPanel() {
+            const panel = document.getElementById('filterPanel');
+            panel.classList.toggle('hidden');
         }
+
+        // Check if there are active filters and show panel
+        @if(request()->hasAny(['type', 'category_id', 'wallet_id', 'start_date', 'end_date', 'search']))
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('filterPanel').classList.remove('hidden');
+        });
+        @endif
 
         // Initialize category options on page load
         document.addEventListener('DOMContentLoaded', function() {
@@ -460,18 +567,6 @@
                 updateCategoryOptions();
             @endif
         @endif
-
-        // Initialize filter buttons style
-        document.addEventListener('DOMContentLoaded', function() {
-            const buttons = document.querySelectorAll('.filter-btn');
-            buttons.forEach(btn => {
-                if (!btn.classList.contains('active')) {
-                    btn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
-                } else {
-                    btn.classList.add('bg-indigo-600', 'text-white');
-                }
-            });
-        });
 
         // Preview image before upload
         function displayFileName(input) {
@@ -517,10 +612,5 @@
         });
     </script>
 
-    <style>
-        .filter-btn.active {
-            background-color: rgb(79 70 229);
-            color: white;
-        }
-    </style>
+
 </x-app-layout>
