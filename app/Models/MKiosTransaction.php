@@ -14,6 +14,7 @@ class MKiosTransaction extends Model
         'transaction_type',
         'product_code',
         'phone_number',
+        'pln_customer_id',
         'customer_id',
         'balance_deducted',
         'cash_received',

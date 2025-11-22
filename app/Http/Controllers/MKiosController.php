@@ -141,6 +141,7 @@ class MKiosController extends Controller
             'transaction_type' => 'required|in:pulsa,dana,gopay,token_listrik',
             'product_code' => 'nullable|string|max:50',
             'phone_number' => 'nullable|string|max:20',
+            'pln_customer_id' => 'nullable|string|max:100',
             'customer_id' => 'nullable|exists:customers,id',
             'balance_deducted' => 'required|numeric|min:0',
             'cash_received' => 'required|numeric|min:0',
@@ -158,8 +159,8 @@ class MKiosController extends Controller
                 ->withInput();
         }
 
-        if ($request->transaction_type === 'token_listrik' && empty($request->customer_id)) {
-            return back()->withErrors(['customer_id' => 'ID Pelanggan wajib diisi untuk transaksi Token Listrik'])
+        if ($request->transaction_type === 'token_listrik' && empty($request->pln_customer_id)) {
+            return back()->withErrors(['pln_customer_id' => 'Nomor ID PLN wajib diisi untuk transaksi Token Listrik'])
                 ->withInput();
         }
         
@@ -185,6 +186,7 @@ class MKiosController extends Controller
                     'transaction_type' => $request->transaction_type,
                     'product_code' => $request->product_code,
                     'phone_number' => $request->phone_number,
+                    'pln_customer_id' => $request->pln_customer_id,
                     'customer_id' => $request->customer_id,
                     'balance_deducted' => $request->balance_deducted,
                     'cash_received' => $request->cash_received,
@@ -219,6 +221,151 @@ class MKiosController extends Controller
         }
 
         return view('m-kios.show', compact('mkiosTransaction'));
+    }
+
+    /**
+     * Show the form for editing the specified transaction.
+     */
+    public function edit(MKiosTransaction $mkiosTransaction)
+    {
+        // Authorization check
+        if ($mkiosTransaction->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $user = Auth::user();
+        $wallets = $user->wallets;
+        $customers = $user->customers()->active()->get();
+
+        return view('m-kios.edit', compact('mkiosTransaction', 'wallets', 'customers'));
+    }
+
+    /**
+     * Update the specified transaction in storage.
+     */
+    public function update(Request $request, MKiosTransaction $mkiosTransaction)
+    {
+        // Authorization check
+        if ($mkiosTransaction->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'transaction_type' => 'required|in:pulsa,dana,gopay,token_listrik',
+            'product_code' => 'nullable|string|max:50',
+            'phone_number' => 'nullable|string|max:20',
+            'pln_customer_id' => 'nullable|string|max:100',
+            'customer_id' => 'nullable|exists:customers,id',
+            'balance_deducted' => 'required|numeric|min:0',
+            'cash_received' => 'required|numeric|min:0',
+            'provider' => 'nullable|string|max:50',
+            'wallet_id' => 'required|exists:wallets,id',
+            'notes' => 'nullable|string|max:1000',
+            'transaction_date' => 'nullable|date',
+            'status' => 'required|in:completed,pending,failed',
+        ]);
+
+        $user = Auth::user();
+
+        // Manual validation for conditional fields
+        if (in_array($request->transaction_type, ['pulsa', 'dana', 'gopay']) && empty($request->phone_number)) {
+            return back()->withErrors(['phone_number' => 'Nomor HP wajib diisi untuk transaksi ' . strtoupper($request->transaction_type)])
+                ->withInput();
+        }
+
+        if ($request->transaction_type === 'token_listrik' && empty($request->pln_customer_id)) {
+            return back()->withErrors(['pln_customer_id' => 'Nomor ID PLN wajib diisi untuk transaksi Token Listrik'])
+                ->withInput();
+        }
+        
+        // Verify wallet ownership
+        $wallet = Wallet::where('id', $request->wallet_id)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        try {
+            DB::transaction(function () use ($request, $mkiosTransaction, $wallet) {
+                $oldBalanceDeducted = $mkiosTransaction->balance_deducted;
+                $oldWalletId = $mkiosTransaction->wallet_id;
+                $oldStatus = $mkiosTransaction->status;
+                $newBalanceDeducted = $request->balance_deducted;
+                $newStatus = $request->status;
+
+                // Calculate profit
+                $profit = $request->cash_received - $request->balance_deducted;
+
+                // Handle wallet balance changes
+                // Case 1: Status changed from completed to non-completed
+                if ($oldStatus === 'completed' && $newStatus !== 'completed') {
+                    // Restore old balance to old wallet
+                    if ($mkiosTransaction->wallet) {
+                        $mkiosTransaction->wallet->addBalance((float) $oldBalanceDeducted);
+                    }
+                }
+                // Case 2: Status changed from non-completed to completed
+                elseif ($oldStatus !== 'completed' && $newStatus === 'completed') {
+                    // Check if new wallet has enough balance
+                    if ($wallet->balance < $newBalanceDeducted) {
+                        throw new \Exception('Saldo wallet tidak mencukupi!');
+                    }
+                    // Deduct new balance from new wallet
+                    $wallet->subtractBalance((float) $newBalanceDeducted);
+                }
+                // Case 3: Status remains completed but wallet or amount changed
+                elseif ($oldStatus === 'completed' && $newStatus === 'completed') {
+                    // If wallet changed
+                    if ($oldWalletId !== $request->wallet_id) {
+                        // Restore balance to old wallet
+                        if ($mkiosTransaction->wallet) {
+                            $mkiosTransaction->wallet->addBalance((float) $oldBalanceDeducted);
+                        }
+                        // Check if new wallet has enough balance
+                        if ($wallet->balance < $newBalanceDeducted) {
+                            throw new \Exception('Saldo wallet tidak mencukupi!');
+                        }
+                        // Deduct from new wallet
+                        $wallet->subtractBalance((float) $newBalanceDeducted);
+                    }
+                    // If wallet same but amount changed
+                    elseif ($oldBalanceDeducted != $newBalanceDeducted) {
+                        $difference = $newBalanceDeducted - $oldBalanceDeducted;
+                        if ($difference > 0) {
+                            // Need to deduct more
+                            if ($wallet->balance < $difference) {
+                                throw new \Exception('Saldo wallet tidak mencukupi!');
+                            }
+                            $wallet->subtractBalance((float) $difference);
+                        } else {
+                            // Return some balance
+                            $wallet->addBalance((float) abs($difference));
+                        }
+                    }
+                }
+
+                // Update transaction
+                $mkiosTransaction->update([
+                    'transaction_type' => $request->transaction_type,
+                    'product_code' => $request->product_code,
+                    'phone_number' => $request->phone_number,
+                    'pln_customer_id' => $request->pln_customer_id,
+                    'customer_id' => $request->customer_id,
+                    'balance_deducted' => $request->balance_deducted,
+                    'cash_received' => $request->cash_received,
+                    'profit' => $profit,
+                    'provider' => $request->provider,
+                    'wallet_id' => $request->wallet_id,
+                    'notes' => $request->notes,
+                    'status' => $request->status,
+                    'transaction_date' => $request->transaction_date ?? $mkiosTransaction->transaction_date,
+                ]);
+            });
+
+            return redirect()->route('m-kios.index')
+                ->with('success', 'Transaksi M-KIOS berhasil diperbarui!');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Terjadi kesalahan: ' . $e->getMessage()])
+                ->withInput();
+        }
     }
 
     /**

@@ -45,6 +45,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/m-kios', [MKiosController::class, 'index'])->name('m-kios.index');
     Route::post('/m-kios', [MKiosController::class, 'store'])->name('m-kios.store');
     Route::get('/m-kios/{mkiosTransaction}', [MKiosController::class, 'show'])->name('m-kios.show');
+    Route::get('/m-kios/{mkiosTransaction}/edit', [MKiosController::class, 'edit'])->name('m-kios.edit');
+    Route::put('/m-kios/{mkiosTransaction}', [MKiosController::class, 'update'])->name('m-kios.update');
     Route::delete('/m-kios/{mkiosTransaction}', [MKiosController::class, 'destroy'])->name('m-kios.destroy');
     
     // Transfer routes

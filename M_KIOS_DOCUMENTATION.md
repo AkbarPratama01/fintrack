@@ -11,8 +11,9 @@ M-KIOS adalah fitur untuk mengelola transaksi digital seperti pulsa, e-wallet (D
 - user_id (bigint, foreign key -> users.id, cascade on delete)
 - transaction_type (enum: pulsa, dana, gopay, token_listrik, default pulsa) - Jenis transaksi
 - product_code (varchar 50, nullable) - Kode produk/nominal (10000, 20000, dll)
-- phone_number (varchar 20) - Nomor telepon customer (untuk pulsa, DANA, GoPay)
-- customer_id (varchar 100, nullable) - ID pelanggan/nomor meter (untuk token listrik)
+- phone_number (varchar 20, nullable) - Nomor telepon customer (untuk pulsa, DANA, GoPay)
+- pln_customer_id (varchar 100, nullable) - Nomor ID PLN/Meter listrik (untuk token listrik)
+- customer_id (bigint, nullable, foreign key -> customers.id, set null on delete) - Link ke customer (optional)
 - balance_deducted (decimal 15,2) - Modal yang keluar dari wallet
 - cash_received (decimal 15,2) - Uang yang diterima dari customer
 - profit (decimal 15,2, default 0) - Keuntungan = cash_received - balance_deducted
@@ -29,7 +30,7 @@ M-KIOS adalah fitur untuk mengelola transaksi digital seperti pulsa, e-wallet (D
 
 ### Models
 - **app/Models/MKiosTransaction.php**
-  - Fillable: user_id, transaction_type, product_code, phone_number, customer_id, balance_deducted, cash_received, profit, provider, wallet_id, notes, status, transaction_date
+  - Fillable: user_id, transaction_type, product_code, phone_number, pln_customer_id, customer_id, balance_deducted, cash_received, profit, provider, wallet_id, notes, status, transaction_date
   - Relationships:
     - `belongsTo(User)` - Pemilik transaksi
     - `belongsTo(Wallet)` - Wallet yang digunakan
@@ -57,6 +58,8 @@ M-KIOS adalah fitur untuk mengelola transaksi digital seperti pulsa, e-wallet (D
   - `index()` - Menampilkan halaman M-KIOS dengan statistik dan daftar transaksi
   - `store()` - Menyimpan transaksi baru dan mengurangi saldo wallet otomatis
   - `show()` - Menampilkan detail transaksi (belum diimplementasikan di view)
+  - `edit()` - Menampilkan form edit transaksi
+  - `update()` - Memperbarui transaksi dan handle perubahan wallet/status
   - `destroy()` - Menghapus transaksi dan mengembalikan saldo ke wallet
 
 ### Views
@@ -75,16 +78,25 @@ M-KIOS adalah fitur untuk mengelola transaksi digital seperti pulsa, e-wallet (D
     - Uang Diterima (cash_received)
     - Profit
     - Status
-    - Aksi (delete button)
+    - Aksi (edit button, delete button)
   - Add transaction modal form
   - Pagination
   - Empty state
+
+- **resources/views/m-kios/edit.blade.php**
+  - Form edit transaksi dengan pre-filled data
+  - Back button ke index
+  - Dynamic form fields berdasarkan transaction_type
+  - Status dropdown (completed, pending, failed)
+  - Update button
 
 ### Routes
 ```php
 Route::get('/m-kios', [MKiosController::class, 'index'])->name('m-kios.index');
 Route::post('/m-kios', [MKiosController::class, 'store'])->name('m-kios.store');
 Route::get('/m-kios/{mkiosTransaction}', [MKiosController::class, 'show'])->name('m-kios.show');
+Route::get('/m-kios/{mkiosTransaction}/edit', [MKiosController::class, 'edit'])->name('m-kios.edit');
+Route::put('/m-kios/{mkiosTransaction}', [MKiosController::class, 'update'])->name('m-kios.update');
 Route::delete('/m-kios/{mkiosTransaction}', [MKiosController::class, 'destroy'])->name('m-kios.destroy');
 ```
 
@@ -105,7 +117,8 @@ Route::delete('/m-kios/{mkiosTransaction}', [MKiosController::class, 'destroy'])
 Form input dengan field:
 - **Jenis Transaksi** (required) - Dropdown: Pulsa, DANA, GoPay, Token Listrik
 - **Nomor HP** (required untuk pulsa/DANA/GoPay) - Nomor telepon customer (conditional)
-- **ID Pelanggan** (required untuk token listrik) - Nomor meter listrik (conditional)
+- **Nomor ID PLN** (required untuk token listrik) - Nomor ID PLN/Meter listrik (conditional)
+- **Customer** (optional) - Dropdown customer untuk tracking (optional untuk semua jenis)
 - **Provider** (optional, untuk pulsa) - Dropdown: Telkomsel, Indosat, XL, Tri, Smartfren, Axis (conditional)
 - **Nominal Produk** (optional) - Kode produk/nominal (10000, 20000, dll)
 - **Modal** (required) - Jumlah saldo yang dipotong dari wallet
@@ -115,9 +128,10 @@ Form input dengan field:
 - **Tanggal Transaksi** (optional) - Default: sekarang
 
 **Dynamic Form Behavior:**
-- Jika pilih **Pulsa**: tampil Nomor HP, Provider, Nominal Produk
-- Jika pilih **DANA** atau **GoPay**: tampil Nomor HP, Nominal Produk
-- Jika pilih **Token Listrik**: tampil ID Pelanggan, Nominal Produk
+- Jika pilih **Pulsa**: tampil Nomor HP (required), Provider, Nominal Produk
+- Jika pilih **DANA** atau **GoPay**: tampil Nomor HP (required), Nominal Produk
+- Jika pilih **Token Listrik**: tampil Nomor ID PLN (required), Nominal Produk
+- Field **Customer** selalu opsional untuk semua jenis transaksi
 
 **Business Logic:**
 1. Validasi saldo wallet mencukupi
@@ -140,14 +154,47 @@ Form input dengan field:
   - Status badge (completed=hijau, pending=kuning, failed=merah)
   - Delete button dengan konfirmasi
 
-### 4. Hapus Transaksi
+### 4. Edit Transaksi
+- Edit button di setiap baris transaksi (icon biru)
+- Redirect ke halaman edit dengan form pre-filled
+- Field yang dapat diedit:
+  - Jenis Transaksi
+  - Nomor HP / Customer ID
+  - Provider
+  - Nominal Produk
+  - Modal (balance_deducted)
+  - Uang Diterima (cash_received)
+  - Wallet
+  - Status (completed, pending, failed)
+  - Catatan
+  - Tanggal Transaksi
+- Authorization check (user_id match)
+
+**Business Logic Update:**
+1. **Status berubah dari completed ke non-completed:**
+   - Kembalikan saldo ke wallet lama
+2. **Status berubah dari non-completed ke completed:**
+   - Validasi saldo wallet baru mencukupi
+   - Kurangi saldo dari wallet baru
+3. **Status tetap completed, wallet berubah:**
+   - Kembalikan saldo ke wallet lama
+   - Validasi saldo wallet baru mencukupi
+   - Kurangi saldo dari wallet baru
+4. **Status tetap completed, amount berubah:**
+   - Hitung selisih modal
+   - Tambah/kurangi saldo wallet sesuai selisih
+5. Hitung ulang profit = cash_received - balance_deducted
+6. Update transaksi
+7. Redirect dengan success message
+
+### 5. Hapus Transaksi
 - Confirmation dialog
 - Authorization check (user_id match)
 - Restore balance ke wallet jika status=completed
 - Soft atau hard delete (currently hard delete)
 - Redirect dengan success message
 
-### 5. Modal Form
+### 6. Modal Form
 - Full-screen overlay dengan z-index 50
 - Toggle dengan JavaScript function `toggleModal()`
 - Close button di header
@@ -186,7 +233,26 @@ Form input dengan field:
 7. Transaksi muncul di tabel
 ```
 
-### 3. Hapus Transaksi
+### 3. Edit Transaksi
+```
+1. Pada baris transaksi, klik icon edit (biru)
+2. Redirect ke halaman edit dengan form pre-filled
+3. Ubah data yang diperlukan, misalnya:
+   - Ubah modal dari 10000 ke 11000
+   - Ubah uang diterima dari 12000 ke 13000
+   - Ubah status dari completed ke pending
+   - Ubah wallet
+4. Klik "Update Transaksi"
+5. Sistem akan:
+   - Validasi data
+   - Handle perubahan wallet/status sesuai business logic
+   - Hitung ulang profit
+   - Update transaksi
+6. Redirect ke halaman M-KIOS dengan pesan sukses
+7. Transaksi ter-update di tabel
+```
+
+### 4. Hapus Transaksi
 ```
 1. Pada baris transaksi, klik icon delete (merah)
 2. Confirm dialog muncul: "Yakin ingin menghapus transaksi ini?"
@@ -199,7 +265,7 @@ Form input dengan field:
 6. Statistik dan tabel ter-update
 ```
 
-### 4. View Empty State
+### 5. View Empty State
 ```
 Jika belum ada transaksi:
 - Icon document ditampilkan
@@ -236,13 +302,17 @@ Jika belum ada transaksi:
 - Check user_id pada show() dan destroy()
 
 ### Validation
-- phone_number: required, string, max 20
+- transaction_type: required, in:pulsa,dana,gopay,token_listrik
+- phone_number: nullable, string, max 20 (required jika pulsa/DANA/GoPay)
+- pln_customer_id: nullable, string, max 100 (required jika token_listrik)
+- customer_id: nullable, exists in customers table
 - balance_deducted: required, numeric, min 0
 - cash_received: required, numeric, min 0
 - provider: nullable, string, max 50
 - wallet_id: required, exists in wallets table
 - notes: nullable, string, max 1000
 - transaction_date: nullable, date
+- status: required (on update), in:completed,pending,failed
 
 ### Data Integrity
 - Foreign key constraints
@@ -261,11 +331,16 @@ Jika belum ada transaksi:
 - [ ] View statistik update setelah create
 - [ ] View transaksi di tabel
 - [ ] Pagination works dengan > 20 transaksi
+- [ ] Edit transaksi - ubah modal & uang diterima
+- [ ] Edit transaksi - ubah wallet
+- [ ] Edit transaksi - ubah status dari completed ke pending
+- [ ] Edit transaksi - ubah status dari pending ke completed
+- [ ] Edit transaksi - validasi saldo wallet mencukupi
 - [ ] Delete transaksi completed (saldo kembali)
 - [ ] Delete transaksi pending/failed (saldo tidak kembali)
 - [ ] Modal open/close dengan JavaScript
 - [ ] Form validation works
-- [ ] Authorization works (tidak bisa delete transaksi user lain)
+- [ ] Authorization works (tidak bisa edit/delete transaksi user lain)
 
 ### Edge Cases
 - Wallet dengan saldo pas dengan modal (works)
@@ -277,7 +352,7 @@ Jika belum ada transaksi:
 ## Future Enhancements
 
 ### Priority HIGH
-- [ ] Edit/Update transaction functionality
+- [x] Edit/Update transaction functionality
 - [ ] Filter by date range
 - [ ] Filter by provider
 - [ ] Filter by status
