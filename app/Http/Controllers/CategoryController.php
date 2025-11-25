@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\Budget;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use Carbon\Carbon;
 
 class CategoryController extends Controller
 {
@@ -103,5 +105,122 @@ class CategoryController extends Controller
         $category->delete();
 
         return redirect()->back()->with('success', 'Category deleted successfully!');
+    }
+
+    /**
+     * Set budget for a category.
+     */
+    public function setBudget(Request $request, Category $category): RedirectResponse
+    {
+        // Check if category belongs to expense type
+        if ($category->type !== 'expense') {
+            return redirect()->back()->with('error', 'Budget can only be set for expense categories.');
+        }
+
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'period' => 'required|in:monthly,yearly',
+        ]);
+
+        // Calculate start date based on period
+        $startDate = $validated['period'] === 'monthly' 
+            ? Carbon::now()->startOfMonth()
+            : Carbon::now()->startOfYear();
+
+        // Check if budget already exists for this period
+        $existingBudget = Budget::where('user_id', Auth::id())
+            ->where('category_id', $category->id)
+            ->where('period', $validated['period'])
+            ->whereDate('start_date', $startDate)
+            ->first();
+
+        if ($existingBudget) {
+            $existingBudget->update([
+                'amount' => $validated['amount'],
+                'is_active' => true,
+            ]);
+        } else {
+            Budget::create([
+                'user_id' => Auth::id(),
+                'category_id' => $category->id,
+                'amount' => $validated['amount'],
+                'period' => $validated['period'],
+                'start_date' => $startDate,
+                'is_active' => true,
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Budget set successfully!');
+    }
+
+    /**
+     * Update budget.
+     */
+    public function updateBudget(Request $request, Budget $budget): RedirectResponse
+    {
+        // Check if budget belongs to user
+        if ($budget->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'period' => 'required|in:monthly,yearly',
+        ]);
+
+        $budget->update($validated);
+
+        return redirect()->back()->with('success', 'Budget updated successfully!');
+    }
+
+    /**
+     * Delete budget for a category.
+     */
+    public function deleteBudget(Budget $budget): RedirectResponse
+    {
+        // Check if budget belongs to user
+        if ($budget->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $budget->delete();
+
+        return redirect()->back()->with('success', 'Budget deleted successfully!');
+    }
+
+    /**
+     * Get budget status for categories.
+     */
+    public function getBudgetStatus(): View
+    {
+        $budgets = Budget::where('user_id', Auth::id())
+            ->where('is_active', true)
+            ->with('category')
+            ->get();
+
+        $budgetData = $budgets->map(function($budget) {
+            return [
+                'id' => $budget->id,
+                'category' => $budget->category,
+                'amount' => $budget->amount,
+                'period' => $budget->period,
+                'spending' => $budget->getSpending(),
+                'remaining' => $budget->getRemaining(),
+                'percentage' => $budget->getPercentage(),
+                'status' => $budget->getStatus(),
+                'is_exceeded' => $budget->isExceeded(),
+            ];
+        });
+
+        // Get expense categories for budget modal
+        $expenseCategories = Category::where(function($query) {
+                $query->whereNull('user_id')
+                      ->orWhere('user_id', Auth::id());
+            })
+            ->where('type', 'expense')
+            ->orderBy('name')
+            ->get();
+
+        return view('budgets.index', compact('budgetData', 'expenseCategories'));
     }
 }

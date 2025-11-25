@@ -72,6 +72,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the budgets for the user.
+     */
+    public function budgets()
+    {
+        return $this->hasMany(Budget::class);
+    }
+
+    /**
      * Get the M-KIOS transactions for the user.
      */
     public function mkiosTransactions()

@@ -34,6 +34,12 @@ Route::middleware('auth')->group(function () {
     // Category routes
     Route::resource('categories', \App\Http\Controllers\CategoryController::class)->only(['index', 'store', 'update', 'destroy']);
     
+    // Budget routes
+    Route::post('/categories/{category}/budget', [\App\Http\Controllers\CategoryController::class, 'setBudget'])->name('categories.set-budget');
+    Route::put('/budgets/{budget}', [\App\Http\Controllers\CategoryController::class, 'updateBudget'])->name('budgets.update');
+    Route::delete('/budgets/{budget}', [\App\Http\Controllers\CategoryController::class, 'deleteBudget'])->name('budgets.destroy');
+    Route::get('/budgets', [\App\Http\Controllers\CategoryController::class, 'getBudgetStatus'])->name('budgets.index');
+    
     // Report routes
     Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
     Route::post('/reports/generate', [\App\Http\Controllers\ReportController::class, 'generate'])->name('reports.generate');

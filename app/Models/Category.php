@@ -34,6 +34,14 @@ class Category extends Model
     }
 
     /**
+     * Get all budgets for the category.
+     */
+    public function budgets(): HasMany
+    {
+        return $this->hasMany(Budget::class);
+    }
+
+    /**
      * Scope a query to only include income categories.
      */
     public function scopeIncome(Builder $query): Builder
