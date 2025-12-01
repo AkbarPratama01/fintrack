@@ -122,10 +122,14 @@ class CategoryController extends Controller
             'period' => 'required|in:monthly,yearly',
         ]);
 
-        // Calculate start date based on period
+        // Calculate start and end date based on period
         $startDate = $validated['period'] === 'monthly' 
             ? Carbon::now()->startOfMonth()
             : Carbon::now()->startOfYear();
+        
+        $endDate = $validated['period'] === 'monthly'
+            ? Carbon::now()->endOfMonth()
+            : Carbon::now()->endOfYear();
 
         // Check if budget already exists for this period
         $existingBudget = Budget::where('user_id', Auth::id())
@@ -137,6 +141,7 @@ class CategoryController extends Controller
         if ($existingBudget) {
             $existingBudget->update([
                 'amount' => $validated['amount'],
+                'end_date' => $endDate,
                 'is_active' => true,
             ]);
         } else {
@@ -146,6 +151,7 @@ class CategoryController extends Controller
                 'amount' => $validated['amount'],
                 'period' => $validated['period'],
                 'start_date' => $startDate,
+                'end_date' => $endDate,
                 'is_active' => true,
             ]);
         }

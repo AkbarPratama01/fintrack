@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Schedule the command to run every hour
 Schedule::command('transfers:process-scheduled')->hourly();
+
+// Schedule budget reset at the start of each month (1st day at 00:01)
+Schedule::command('budgets:reset-monthly')->monthlyOn(1, '00:01');
