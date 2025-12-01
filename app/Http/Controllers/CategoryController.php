@@ -229,4 +229,55 @@ class CategoryController extends Controller
 
         return view('budgets.index', compact('budgetData', 'expenseCategories'));
     }
+
+    /**
+     * Reset all budgets to current period.
+     */
+    public function resetBudgets(): RedirectResponse
+    {
+        $now = Carbon::now();
+        $resetCount = 0;
+
+        // Reset monthly budgets
+        $monthlyBudgets = Budget::where('user_id', Auth::id())
+            ->where('is_active', true)
+            ->where('period', 'monthly')
+            ->get();
+
+        foreach ($monthlyBudgets as $budget) {
+            $budgetMonth = Carbon::parse($budget->start_date);
+            
+            if ($budgetMonth->month !== $now->month || $budgetMonth->year !== $now->year) {
+                $budget->update([
+                    'start_date' => $now->copy()->startOfMonth(),
+                    'end_date' => $now->copy()->endOfMonth(),
+                ]);
+                $resetCount++;
+            }
+        }
+
+        // Reset yearly budgets
+        $yearlyBudgets = Budget::where('user_id', Auth::id())
+            ->where('is_active', true)
+            ->where('period', 'yearly')
+            ->get();
+
+        foreach ($yearlyBudgets as $budget) {
+            $budgetYear = Carbon::parse($budget->start_date);
+            
+            if ($budgetYear->year !== $now->year) {
+                $budget->update([
+                    'start_date' => $now->copy()->startOfYear(),
+                    'end_date' => $now->copy()->endOfYear(),
+                ]);
+                $resetCount++;
+            }
+        }
+
+        if ($resetCount > 0) {
+            return redirect()->back()->with('success', "Successfully reset {$resetCount} budget(s) to current period!");
+        }
+
+        return redirect()->back()->with('success', 'All budgets are already up to date.');
+    }
 }

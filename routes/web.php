@@ -41,6 +41,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/budgets/{budget}', [\App\Http\Controllers\CategoryController::class, 'updateBudget'])->name('budgets.update');
     Route::delete('/budgets/{budget}', [\App\Http\Controllers\CategoryController::class, 'deleteBudget'])->name('budgets.destroy');
     Route::get('/budgets', [\App\Http\Controllers\CategoryController::class, 'getBudgetStatus'])->name('budgets.index');
+    Route::post('/budgets/reset', [\App\Http\Controllers\CategoryController::class, 'resetBudgets'])->name('budgets.reset');
     
     // Report routes
     Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');

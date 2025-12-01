@@ -23,12 +23,23 @@
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Budget Overview</h3>
                             <p class="text-sm text-gray-500 dark:text-gray-400">Track your spending against budgets</p>
                         </div>
-                        <button onclick="toggleBudgetModal()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-150 flex items-center space-x-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                            </svg>
-                            <span>Set New Budget</span>
-                        </button>
+                        <div class="flex items-center space-x-3">
+                            <form action="{{ route('budgets.reset') }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to reset all budgets to the current period? This will update all budget periods.');">
+                                @csrf
+                                <button type="submit" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition duration-150 flex items-center space-x-2" title="Reset all budgets to current period">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                    <span>Reset Budgets</span>
+                                </button>
+                            </form>
+                            <button onclick="toggleBudgetModal()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-150 flex items-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                <span>Set New Budget</span>
+                            </button>
+                        </div>
                     </div>
 
                     @if($budgetData->count() > 0)
