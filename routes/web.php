@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MKiosController;
+use App\Http\Controllers\NoteController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\TransferController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\WishListController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -72,6 +74,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('financial-goals', \App\Http\Controllers\FinancialGoalController::class);
     Route::post('/financial-goals/{financialGoal}/contribute', [\App\Http\Controllers\FinancialGoalController::class, 'addContribution'])->name('financial-goals.contribute');
     Route::post('/financial-goals/{financialGoal}/withdraw', [\App\Http\Controllers\FinancialGoalController::class, 'withdraw'])->name('financial-goals.withdraw');
+    
+    // Note routes
+    Route::resource('notes', NoteController::class);
+    Route::post('/notes/{note}/toggle-pin', [NoteController::class, 'togglePin'])->name('notes.toggle-pin');
+    
+    // Wish List routes
+    Route::resource('wishlists', WishListController::class);
+    Route::post('/wishlists/{wishlist}/add-savings', [WishListController::class, 'addSavings'])->name('wishlists.add-savings');
 });
 
 require __DIR__.'/auth.php';
