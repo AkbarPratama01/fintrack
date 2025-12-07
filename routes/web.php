@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MKiosController;
 use App\Http\Controllers\NoteController;
+use App\Http\Controllers\PrayerController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\TransferController;
@@ -83,6 +84,10 @@ Route::middleware('auth')->group(function () {
     // Wish List routes
     Route::resource('wishlists', WishListController::class);
     Route::post('/wishlists/{wishlist}/add-savings', [WishListController::class, 'addSavings'])->name('wishlists.add-savings');
+    
+    // Prayer routes
+    Route::resource('prayers', PrayerController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::get('/prayers-statistics', [PrayerController::class, 'statistics'])->name('prayers.statistics');
 });
 
 require __DIR__.'/auth.php';
