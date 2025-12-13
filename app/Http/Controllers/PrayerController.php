@@ -59,7 +59,10 @@ class PrayerController extends Controller
                 return $prayer->prayer_date->format('Y-m-d');
             });
         
-        return view('prayers.index', compact('todayPrayers', 'prayerTimes', 'stats', 'recentPrayers'));
+        // Get missing prayers (last 7 days excluding today)
+        $missingPrayers = $this->getMissingPrayers($user->id, 7);
+        
+        return view('prayers.index', compact('todayPrayers', 'prayerTimes', 'stats', 'recentPrayers', 'missingPrayers'));
     }
 
     /**
@@ -138,6 +141,7 @@ class PrayerController extends Controller
         
         $prayers = Prayer::where('user_id', Auth::id())
             ->whereBetween('prayer_date', [$startDate, $endDate])
+            ->orderBy('prayer_date', 'desc')
             ->get();
         
         $stats = [
@@ -160,14 +164,46 @@ class PrayerController extends Controller
     }
 
     /**
+     * Get missing prayers for the last N days (excluding today)
+     */
+    private function getMissingPrayers($userId, $days = 7)
+    {
+        $missingPrayers = [];
+        $prayerNames = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+        
+        // Check last N days excluding today
+        for ($i = 1; $i <= $days; $i++) {
+            $date = Carbon::now()->subDays($i);
+            
+            // Get tracked prayers for this date
+            $trackedPrayers = Prayer::where('user_id', $userId)
+                ->whereDate('prayer_date', $date)
+                ->pluck('prayer_name')
+                ->toArray();
+            
+            // Find missing prayers
+            $missing = array_diff($prayerNames, $trackedPrayers);
+            
+            if (!empty($missing)) {
+                $missingPrayers[$date->format('Y-m-d')] = [
+                    'date' => $date,
+                    'prayers' => $missing,
+                ];
+            }
+        }
+        
+        return $missingPrayers;
+    }
+    
+    /**
      * Get prayer times from API (using Aladhan API)
      */
     private function getPrayerTimes()
     {
         try {
-            // Default location (Jakarta, Indonesia)
+            // Default location (Bandung, Indonesia)
             // You can make this configurable per user
-            $city = 'Jakarta';
+            $city = 'Bandung';
             $country = 'Indonesia';
             $method = 11; // Kementerian Agama Indonesia
             
@@ -192,14 +228,14 @@ class PrayerController extends Controller
             // Fallback to default times if API fails
         }
         
-        // Default prayer times (Jakarta)
+        // Default prayer times (Bandung)
         return [
             'fajr' => '04:30',
             'dhuhr' => '12:00',
             'asr' => '15:15',
             'maghrib' => '18:00',
             'isha' => '19:15',
-            'location' => 'Jakarta, Indonesia (Default)',
+            'location' => 'Bandung, Indonesia (Default)',
         ];
     }
 }
