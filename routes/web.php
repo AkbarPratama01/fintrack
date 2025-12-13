@@ -5,6 +5,7 @@ use App\Http\Controllers\MKiosController;
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\PrayerController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\QuranReadingController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\TransferController;
 use App\Http\Controllers\WalletController;
@@ -88,6 +89,11 @@ Route::middleware('auth')->group(function () {
     // Prayer routes
     Route::resource('prayers', PrayerController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::get('/prayers-statistics', [PrayerController::class, 'statistics'])->name('prayers.statistics');
+    
+    // Quran Reading routes
+    Route::resource('quran-readings', QuranReadingController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::get('/quran-statistics', [QuranReadingController::class, 'statistics'])->name('quran-readings.statistics');
+    Route::get('/quran-read', [QuranReadingController::class, 'read'])->name('quran-readings.read');
 });
 
 require __DIR__.'/auth.php';
