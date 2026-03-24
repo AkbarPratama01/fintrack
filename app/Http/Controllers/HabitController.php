@@ -9,11 +9,22 @@ use Illuminate\Support\Facades\Auth;
 class HabitController extends Controller
 {
     // 📋 List habit
-    public function index()
+    public function index(Request $request)
     {
-        $habits = Habit::where('user_id', Auth::id())->latest()->get();
+        $month = $request->month 
+            ? \Carbon\Carbon::parse($request->month) 
+            : now();
 
-        return view('habits.index', compact('habits'));
+        $start = $month->copy()->startOfMonth();
+        $end = $month->copy()->endOfMonth();
+
+        $habits = Habit::with(['logs' => function ($q) use ($start, $end) {
+            $q->whereBetween('date', [$start, $end]);
+        }])
+        ->where('user_id', auth()->id())
+        ->get();
+
+        return view('habits.index', compact('habits', 'month'));
     }
 
     // ➕ Tambah habit
@@ -27,7 +38,9 @@ class HabitController extends Controller
         Habit::create([
             'user_id' => Auth::id(),
             'name' => $request->name,
-            'category' => $request->category
+            'category' => $request->category,
+            'frequency' => $request->frequency ?? 'daily',
+            'days' => $request->days
         ]);
 
         return redirect()
@@ -58,6 +71,8 @@ class HabitController extends Controller
         $habit->update([
             'name' => $request->name,
             'category' => $request->category,
+            'frequency' => $request->frequency ?? 'daily',
+            'days' => $request->days
         ]);
 
         return redirect()

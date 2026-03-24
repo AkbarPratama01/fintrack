@@ -1,149 +1,178 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                Habit Tracker
-            </h2>
 
-            <button onclick="toggleModal()" 
-                class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-2">
-                <span>+ Tambah Habit</span>
-            </button>
-        </div>
-    </x-slot>
+<x-slot name="header">
+    <div class="flex justify-between items-center">
+        <h2 class="text-xl font-semibold">Habit Tracker</h2>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+        <button onclick="toggleModal()" 
+            class="px-4 py-2 bg-indigo-600 text-white rounded-lg">
+            + Tambah Habit
+        </button>
+    </div>
+</x-slot>
 
-            <!-- Alert -->
-            @if(session('success'))
-                <div class="bg-green-100 text-green-700 px-4 py-3 rounded">
-                    {{ session('success') }}
-                </div>
-            @endif
+<div class="p-6 max-w-7xl mx-auto">
 
-            <!-- Habit List -->
-            <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg">
-                <div class="p-6">
+    <!-- NAV BULAN -->
+    <div class="flex justify-between items-center mb-6">
 
-                    <div class="flex justify-between mb-6">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                            Habit Hari Ini
-                        </h3>
-                        <span class="text-sm text-gray-500">
-                            {{ $habits->count() }} habits
-                        </span>
-                    </div>
+        <a href="{{ route('habits.index', ['month' => $month->copy()->subMonth()->format('Y-m')]) }}"
+           class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
+            ⬅️
+        </a>
 
-                    @if($habits->count() > 0)
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <h3 class="text-lg font-semibold">
+            {{ $month->format('F Y') }}
+        </h3>
 
-                            @foreach($habits as $habit)
-                                <div class="border rounded-lg p-4 hover:shadow-md">
+        <a href="{{ route('habits.index', ['month' => $month->copy()->addMonth()->format('Y-m')]) }}"
+           class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
+            ➡️
+        </a>
 
-                                    <div class="flex justify-between items-center">
+    </div>
 
-                                        <!-- Info -->
-                                        <div>
-                                            <h4 class="font-medium text-gray-900 dark:text-white">
-                                                {{ $habit->name }}
-                                            </h4>
-                                            <p class="text-xs text-gray-500">
-                                                {{ ucfirst($habit->category) }}
-                                            </p>
-                                        </div>
+    @if($habits->count() > 0)
 
-                                        <!-- Checkbox -->
-                                        <form action="{{ route('habit.check', $habit->id) }}" method="POST">
-                                            @csrf
-                                            <input type="checkbox"
-                                                onchange="this.form.submit()"
-                                                {{ optional($habit->todayLog)->status ? 'checked' : '' }}>
-                                        </form>
-                                    </div>
+    @php
+        $start = $month->copy()->startOfMonth();
+        $end = $month->copy()->endOfMonth();
+        $dates = [];
 
-                                    <!-- Action -->
-                                    <div class="flex justify-end space-x-2 mt-3">
-                                        <button onclick="editHabit({{ $habit->id }}, '{{ $habit->name }}', '{{ $habit->category }}')" 
-                                            class="text-indigo-600">Edit</button>
+        for ($date = $start->copy(); $date <= $end; $date->addDay()) {
+            $dates[] = $date->copy();
+        }
+    @endphp
 
-                                        <form action="{{ route('habits.destroy', $habit->id) }}" method="POST">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button class="text-red-600">Hapus</button>
-                                        </form>
-                                    </div>
+    <div class="overflow-x-auto bg-white dark:bg-gray-800 p-4 rounded-2xl shadow">
 
-                                </div>
-                            @endforeach
+        <table class="min-w-max text-center">
 
+            <!-- HEADER -->
+            <thead>
+                <tr class="bg-gray-100 dark:bg-gray-700">
+
+                    <th class="p-3 sticky left-0 bg-white dark:bg-gray-800 z-10 text-left">
+                        Habit
+                    </th>
+
+                    @foreach($dates as $date)
+                        <th class="p-2 text-xs 
+                            {{ $date->isToday() && $month->isCurrentMonth() ? 'bg-indigo-200' : '' }}">
+                            {{ $date->format('d') }}
+                        </th>
+                    @endforeach
+
+                </tr>
+            </thead>
+
+            <!-- BODY -->
+            <tbody>
+                @foreach($habits as $habit)
+
+                @php
+                    $done = $habit->logs->where('status', 1)->count();
+                    $total = count($dates);
+                @endphp
+
+                <tr class="border-t">
+
+                    <!-- NAMA HABIT -->
+                    <td class="p-3 sticky left-0 bg-white dark:bg-gray-800 text-left">
+
+                        <div class="font-medium text-gray-800 dark:text-white">
+                            {{ $habit->name }}
                         </div>
-                    @else
-                        <p class="text-gray-500 text-center">Belum ada habit</p>
-                    @endif
 
-                </div>
-            </div>
+                        <div class="text-xs text-gray-400">
+                            {{ $done }}/{{ $total }}
+                        </div>
 
-        </div>
+                    </td>
+
+                    <!-- TANGGAL -->
+                    @foreach($dates as $date)
+
+                        @php
+                            $dateStr = $date->format('Y-m-d');
+                            $log = $habit->logs->where('date', $dateStr)->first();
+                        @endphp
+
+                        <td class="p-2 
+                            {{ $date->isToday() && $month->isCurrentMonth() ? 'bg-indigo-100' : '' }}">
+
+                            <form method="POST" action="{{ route('habit.check', $habit->id) }}">
+                                @csrf
+                                <input type="hidden" name="date" value="{{ $dateStr }}">
+
+                                <input type="checkbox"
+                                    onchange="this.form.submit()"
+                                    class="w-4 h-4 text-indigo-600 rounded"
+                                    {{ $log && $log->status ? 'checked' : '' }}>
+                            </form>
+
+                        </td>
+
+                    @endforeach
+
+                </tr>
+
+                @endforeach
+            </tbody>
+
+        </table>
+
     </div>
 
-    <!-- Modal Add/Edit -->
-    <div id="habitModal" class="fixed inset-0 bg-black bg-opacity-50 hidden">
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md mx-auto mt-20">
+    @else
+        <p class="text-gray-500 text-center">Belum ada habit</p>
+    @endif
 
-            <h3 id="modalTitle" class="text-lg font-semibold mb-4">Tambah Habit</h3>
+</div>
 
-            <form id="habitForm" method="POST" action="{{ route('habits.store') }}">
-                @csrf
-                <input type="hidden" id="formMethod" name="_method">
+<!-- MODAL -->
+<div id="habitModal" class="fixed inset-0 bg-black bg-opacity-50 hidden">
+    <div class="bg-white p-6 rounded-lg w-full max-w-md mx-auto mt-20">
 
-                <div class="mb-3">
-                    <label>Nama Habit</label>
-                    <input type="text" name="name" id="name" class="w-full border rounded p-2">
-                </div>
+        <h3 class="mb-4 font-semibold">Tambah Habit</h3>
 
-                <div class="mb-3">
-                    <label>Kategori</label>
-                    <select name="category" id="category" class="w-full border rounded p-2">
-                        <option value="ibadah">Ibadah</option>
-                        <option value="kesehatan">Kesehatan</option>
-                        <option value="kerja">Kerja</option>
-                    </select>
-                </div>
+        <form method="POST" action="{{ route('habits.store') }}">
+            @csrf
 
-                <div class="flex space-x-2">
-                    <button type="button" onclick="closeModal()" class="w-full bg-gray-400 text-white p-2 rounded">
-                        Batal
-                    </button>
-                    <button class="w-full bg-indigo-600 text-white p-2 rounded">
-                        Simpan
-                    </button>
-                </div>
+            <input type="text" name="name" 
+                class="w-full mb-3 p-2 border rounded"
+                placeholder="Nama Habit">
 
-            </form>
-        </div>
+            <select name="category" class="w-full mb-3 p-2 border rounded">
+                <option value="ibadah">Ibadah</option>
+                <option value="kesehatan">Kesehatan</option>
+                <option value="kerja">Kerja</option>
+            </select>
+
+            <button class="w-full bg-indigo-600 text-white py-2 rounded">
+                Simpan
+            </button>
+
+        </form>
+
     </div>
+</div>
 
-    <script>
-        function toggleModal() {
-            document.getElementById('habitModal').classList.remove('hidden');
-        }
+<!-- JS -->
+<script>
+function toggleModal() {
+    document.getElementById('habitModal').classList.toggle('hidden');
+}
 
-        function closeModal() {
-            document.getElementById('habitModal').classList.add('hidden');
-        }
-
-        function editHabit(id, name, category) {
-            document.getElementById('modalTitle').innerText = 'Edit Habit';
-            document.getElementById('habitForm').action = '/habits/' + id;
-            document.getElementById('formMethod').value = 'PUT';
-
-            document.getElementById('name').value = name;
-            document.getElementById('category').value = category;
-
-            toggleModal();
-        }
-    </script>
+// Auto scroll ke hari ini
+window.onload = function() {
+    setTimeout(() => {
+        document.querySelector('.bg-indigo-100')?.scrollIntoView({
+            behavior: 'smooth',
+            inline: 'center'
+        });
+    }, 300);
+};
+</script>
 
 </x-app-layout>

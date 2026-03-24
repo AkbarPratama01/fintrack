@@ -10,15 +10,17 @@ use Illuminate\Support\Facades\Auth;
 class HabitLogController extends Controller
 {
     // ✅ Toggle checklist harian
-    public function toggle($habitId)
+    public function toggle(Request $request, $habitId)
     {
+        $date = $request->date ?? today();
+
         $habit = Habit::where('user_id', Auth::id())
                     ->findOrFail($habitId);
 
         $log = HabitLog::firstOrCreate(
             [
                 'habit_id' => $habit->id,
-                'date' => today()
+                'date' => $date
             ],
             [
                 'status' => 0

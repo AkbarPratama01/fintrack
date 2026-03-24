@@ -15,6 +15,12 @@ class Habit extends Model
         'user_id',
         'name',
         'category',
+        'frequency',
+        'days'
+    ];
+
+    protected $casts = [
+        'days' => 'array'
     ];
 
     // Relasi ke user
