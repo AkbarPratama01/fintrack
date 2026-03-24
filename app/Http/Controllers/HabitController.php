@@ -39,8 +39,7 @@ class HabitController extends Controller
             'user_id' => Auth::id(),
             'name' => $request->name,
             'category' => $request->category,
-            'frequency' => $request->frequency ?? 'daily',
-            'days' => $request->days
+            'frequency' => $request->frequency ?? 'daily'   
         ]);
 
         return redirect()
