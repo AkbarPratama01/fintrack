@@ -131,25 +131,35 @@
 </div>
 
 <!-- MODAL -->
-<div id="habitModal" class="fixed inset-0 bg-black bg-opacity-50 hidden">
-    <div class="bg-white p-6 rounded-lg w-full max-w-md mx-auto mt-20">
+<div id="habitModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
 
-        <h3 class="mb-4 font-semibold">Tambah Habit</h3>
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-md mx-4">
 
-        <form method="POST" action="{{ route('habits.store') }}">
+        <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-white">
+            Tambah Habit
+        </h3>
+
+        <form method="POST" action="{{ route('habits.store') }}" class="space-y-4">
             @csrf
 
+            <!-- Input -->
             <input type="text" name="name" 
-                class="w-full mb-3 p-2 border rounded"
-                placeholder="Nama Habit">
+                placeholder="Nama Habit"
+                class="w-full px-4 py-3 rounded-lg border border-gray-300 
+                       focus:ring-2 focus:ring-indigo-500 focus:outline-none
+                       dark:bg-gray-700 dark:text-white">
 
-            <select name="category" class="w-full mb-3 p-2 border rounded">
+            <!-- Select -->
+            <select name="category"
+                class="w-full px-4 py-3 rounded-lg border border-gray-300 
+                       dark:bg-gray-700 dark:text-white">
                 <option value="ibadah">Ibadah</option>
                 <option value="kesehatan">Kesehatan</option>
                 <option value="kerja">Kerja</option>
             </select>
 
-            <button class="w-full bg-indigo-600 text-white py-2 rounded">
+            <!-- Button -->
+            <button class="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
                 Simpan
             </button>
 
