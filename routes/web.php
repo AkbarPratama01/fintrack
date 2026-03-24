@@ -11,6 +11,7 @@ use App\Http\Controllers\TransferController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\WishListController;
+use App\Http\Controllers\TaskController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -94,6 +95,13 @@ Route::middleware('auth')->group(function () {
     Route::resource('quran-readings', QuranReadingController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::get('/quran-statistics', [QuranReadingController::class, 'statistics'])->name('quran-readings.statistics');
     Route::get('/quran-read', [QuranReadingController::class, 'read'])->name('quran-readings.read');
+
+    // Habit routes
+    Route::resource('habits', \App\Http\Controllers\HabitController::class);
+    Route::post('/habits/{habit}/check', [\App\Http\Controllers\HabitLogController::class, 'toggle'])
+        ->name('habit.check');
+    Route::resource('tasks', TaskController::class)->only(['index','store','update','destroy']);
+    Route::post('/tasks/{id}/toggle', [TaskController::class, 'toggle'])->name('tasks.toggle');
 });
 
 require __DIR__.'/auth.php';
